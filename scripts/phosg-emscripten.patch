@@ -1,0 +1,17 @@
+diff --git a/src/Process.cc b/src/Process.cc
+index be68f2a..e8042f7 100644
+--- a/src/Process.cc
++++ b/src/Process.cc
+@@ -222,7 +222,12 @@ uint64_t start_time_for_pid(pid_t pid, bool allow_zombie) {
+     return 0;
+   }
+ 
++#ifdef __EMSCRIPTEN__
++  (void)allow_zombie;
++  if (false) {
++#else
+   if (!allow_zombie && pid_is_zombie(pid)) {
++#endif
+     return 0;
+   }
+   return start_time;

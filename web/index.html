@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Realmz</title>
+<link rel="stylesheet" href="realmz-web.css">
+</head>
+<body>
+<div id="menubar" role="menubar"></div>
+<div id="stage">
+  <canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
+  <div id="overlay">
+    <div id="status">Loading Realmz...</div>
+    <progress id="progress" max="100" value="0"></progress>
+    <button id="start" hidden>Click to play</button>
+  </div>
+</div>
+<footer>
+  <span>Realmz &copy; 1994 Tim Phillips. Modern port by the <a href="https://github.com/Realmz-Castle/realmz">Realmz Castle</a> project. Licensed <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>.</span>
+  <span class="tools">
+    <button id="export-saves" type="button">Export saves</button>
+    <label class="button">Import saves<input id="import-saves" type="file" accept=".zip,.json" hidden></label>
+  </span>
+</footer>
+<script src="realmz-web.js"></script>
+<script src="Realmz.js" async></script>
+</body>
+</html>

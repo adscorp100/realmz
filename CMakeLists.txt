@@ -46,8 +46,23 @@ find_package(phosg REQUIRED)
 message(STATUS "CMake found phosg at: ${phosg_DIR}")
 find_package(resource_file REQUIRED)
 message(STATUS "CMake found resource_file at: ${resource_file_DIR}")
-find_package(ZLIB REQUIRED)
-message(STATUS "CMake found zlib at: ${zlib_DIR}")
+if(EMSCRIPTEN)
+    # zlib comes from the Emscripten port (-sUSE_ZLIB=1)
+    add_compile_options(-sUSE_ZLIB=1 -fexceptions)
+    # The 1994 C sources rely on implicit pointer conversions that newer clang
+    # treats as errors by default.
+    add_compile_options(
+        $<$<COMPILE_LANGUAGE:C>:-Wno-error=incompatible-pointer-types>
+        $<$<COMPILE_LANGUAGE:C>:-Wno-error=int-conversion>
+        $<$<COMPILE_LANGUAGE:C>:-Wno-error=implicit-function-declaration>
+        $<$<COMPILE_LANGUAGE:C>:-Wno-error=incompatible-function-pointer-types>
+        $<$<COMPILE_LANGUAGE:C>:-Wno-error=return-type>
+    )
+    add_link_options(-sUSE_ZLIB=1 -fexceptions)
+else()
+    find_package(ZLIB REQUIRED)
+    message(STATUS "CMake found zlib at: ${zlib_DIR}")
+endif()
 
 # For cross-compilation to Windows
 if(WIN32)
@@ -233,8 +248,14 @@ set(SOURCES
     src/WindowManager.cpp
 )
 
+if(EMSCRIPTEN)
+    set(REALMZ_SDL_TARGET SDL3::SDL3-static)
+else()
+    set(REALMZ_SDL_TARGET SDL3::SDL3-shared)
+endif()
+
 set(realmz_lib_LINK_LIBRARIES
-    SDL3::SDL3-shared
+    ${REALMZ_SDL_TARGET}
     SDL3_ttf::SDL3_ttf
     SDL3_image::SDL3_image
     z
@@ -249,6 +270,8 @@ if(APPLE)
         "-framework Foundation"
         "-framework Cocoa"
     )
+elseif(EMSCRIPTEN)
+    list(APPEND SOURCES src/web/MenuController.cpp)
 elseif(WIN32)
     list(APPEND SOURCES src/windows/MenuController.cpp src/windows/WinMenuController.cpp)
     list(APPEND realmz_lib_LINK_LIBRARIES
@@ -333,19 +356,47 @@ target_link_libraries(Realmz
     realmz_lib
 )
 
-if(NOT WIN32 AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+if(EMSCRIPTEN)
+    # Browser build: the game's blocking Mac-style event loops are kept intact
+    # and unwound with Asyncify whenever SDL sleeps or waits for events.
+    set_target_properties(Realmz PROPERTIES SUFFIX ".js")
+    target_link_options(Realmz PRIVATE
+        -sASYNCIFY=1
+        -sASYNCIFY_STACK_SIZE=1048576
+        -sSTACK_SIZE=8388608
+        -sALLOW_MEMORY_GROWTH=1
+        -sINITIAL_MEMORY=268435456
+        -sEXPORTED_RUNTIME_METHODS=FS,callMain,HEAPU8
+        -sEXPORTED_FUNCTIONS=_main,_realmz_web_screen_data,_realmz_web_screen_width,_realmz_web_screen_height
+        -sFORCE_FILESYSTEM=1
+        -lidbfs.js
+        "SHELL:--preload-file ${CMAKE_CURRENT_SOURCE_DIR}/resources@/"
+        "SHELL:--preload-file ${CMAKE_CURRENT_SOURCE_DIR}/base/Realmz@/"
+        "SHELL:--preload-file ${CMAKE_CURRENT_SOURCE_DIR}/vendored/Inter/InterVariable.ttf@/InterVariable.ttf"
+    )
+    # HTML shell: page, styles, menu bar and save persistence
+    add_custom_command(TARGET Realmz POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/web" "$<TARGET_FILE_DIR:Realmz>"
+    )
+elseif(NOT WIN32 AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     target_compile_options(Realmz PRIVATE -fsanitize=address)
     target_link_options(Realmz PRIVATE -fsanitize=address)
 endif()
 
 # Ensure the files that Realmz needs exist next to the executable.
+if(NOT EMSCRIPTEN)
 add_custom_command(TARGET Realmz POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/resources" "$<TARGET_FILE_DIR:Realmz>"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/base/Realmz" "$<TARGET_FILE_DIR:Realmz>"
     COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/vendored/Inter/InterVariable.ttf" "$<TARGET_FILE_DIR:Realmz>"
 )
+endif()
 
-set(TEST_EXECUTABLES "GraphicsTest")
+if(EMSCRIPTEN)
+    set(TEST_EXECUTABLES "")
+else()
+    set(TEST_EXECUTABLES "GraphicsTest")
+endif()
 foreach(TEST_EXECUTABLE ${TEST_EXECUTABLES})
     add_executable(${TEST_EXECUTABLE} MACOSX_BUNDLE
         src/tests/${TEST_EXECUTABLE}.cpp

@@ -1,7 +1,13 @@
 #include "EventManager.h"
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+
+#include "web/WebMenuController.h"
+#endif
 
 #include <SDL3/SDL_events.h>
 
+#include <algorithm>
 #include <cstring>
 #include <deque>
 #include <phosg/Strings.hh>
@@ -538,12 +544,46 @@ protected:
 
   void enqueue_pending_events(int32_t wait_ms) {
     SDL_Event e;
+    SDL_zero(e);
 
+#ifdef __EMSCRIPTEN__
+    // Deliver clicks on the HTML menu bar before waiting on SDL.
+    WebMenuPoll();
+#endif
+
+#ifdef __EMSCRIPTEN__
+    // The browser only delivers input and paints the canvas when we give
+    // control back to it. Realmz busy-polls for events in many loops, so
+    // yield (via Asyncify) at least every few milliseconds, and turn waits
+    // into short sleeps instead of blocking inside SDL.
+    static uint64_t last_yield_ms = 0;
+    if (wait_ms > 0) {
+      uint64_t deadline = SDL_GetTicks() + wait_ms;
+      while (!SDL_PollEvent(&e)) {
+        uint64_t now = SDL_GetTicks();
+        if (now >= deadline) {
+          break;
+        }
+        emscripten_sleep(std::min<uint64_t>(deadline - now, 10));
+        last_yield_ms = SDL_GetTicks();
+        WebMenuPoll();
+      }
+      if (e.type != 0) {
+        this->enqueue_sdl_event(e);
+      }
+      SDL_zero(e);
+    } else if (SDL_GetTicks() - last_yield_ms >= 8) {
+      emscripten_sleep(0);
+      last_yield_ms = SDL_GetTicks();
+      WebMenuPoll();
+    }
+#else
     // If wait_ms > 0, wait for at least one event to be available before
     // enqueuing all remaining events
     if ((wait_ms > 0) && SDL_WaitEventTimeout(&e, wait_ms)) {
       this->enqueue_sdl_event(e);
     }
+#endif
     while (SDL_PollEvent(&e)) {
       this->enqueue_sdl_event(e);
     }

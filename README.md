@@ -42,6 +42,17 @@ Pull requests are welcome. Please review the [Contributing Guide](https://github
 - `cmake --preset macOS`
 - `cmake --build --preset macOS`
 
+## Building for the web (WebAssembly)
+- Install tools: `brew install emscripten cmake ninja` (Emscripten needs Python 3.10+; set `EMSDK_PYTHON` if your default `python3` is older)
+- Run `scripts/build_web.sh`. It clones and builds phosg and resource_dasm for wasm into `build_web_deps/`, then builds the game into `build_web/`
+- Serve it: `python3 -m http.server 8765 --directory build_web` and open http://localhost:8765/
+
+Notes on the browser build:
+- The game's blocking, Mac-style event loops run unchanged under Emscripten's Asyncify; `EventManager` yields to the browser every few milliseconds.
+- Menus are an HTML menu bar (`src/web/MenuController.cpp`, `web/realmz-web.js`). Cmd/Ctrl+key shortcuts work.
+- Saves, characters and preferences are stored in the browser's IndexedDB and synced every 5 seconds and when the tab is hidden. Use "Export saves" / "Import saves" in the page footer to back them up or move them to another browser.
+- All game data (about 54 MB) is downloaded on first load.
+
 ## Cross-compiling for Windows from Mac
 
 - Install [llvm-mingw](https://github.com/mstorsjo/llvm-mingw)

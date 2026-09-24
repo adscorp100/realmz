@@ -99,9 +99,20 @@ public:
         sm_log.warning_f("Could not flush audio stream: {}", SDL_GetError());
         return;
       }
+#ifdef __EMSCRIPTEN__
+      // A browser AudioContext can stay suspended (no user gesture yet, tab in
+      // the background), in which case the stream never drains. Don't wait
+      // longer than the sound itself plus a small margin.
+      uint64_t duration_ms = (sound->data.size() * 1000) / (OUTPUT_SAMPLE_RATE * 4);
+      uint64_t deadline = SDL_GetTicks() + duration_ms + 250;
+      while ((SDL_GetAudioStreamAvailable(sdlAudioStream) > 0) && (SDL_GetTicks() < deadline)) {
+        SDL_Delay(10);
+      }
+#else
       while (SDL_GetAudioStreamAvailable(sdlAudioStream) > 0) {
         SDL_Delay(10);
       }
+#endif
     }
   }
 

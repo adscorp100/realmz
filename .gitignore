@@ -28,3 +28,6 @@ Makefile
 # Other stuff
 divinity.out
 realmz.out
+build_web/
+build_web_deps/
+build_native/
