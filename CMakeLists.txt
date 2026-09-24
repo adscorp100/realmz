@@ -365,7 +365,7 @@ if(EMSCRIPTEN)
         -sASYNCIFY_STACK_SIZE=1048576
         -sSTACK_SIZE=8388608
         -sALLOW_MEMORY_GROWTH=1
-        -sINITIAL_MEMORY=268435456
+        -sINITIAL_MEMORY=134217728
         -sEXPORTED_RUNTIME_METHODS=FS,callMain,HEAPU8
         -sEXPORTED_FUNCTIONS=_main,_realmz_web_screen_data,_realmz_web_screen_width,_realmz_web_screen_height
         -sFORCE_FILESYSTEM=1
@@ -375,9 +375,10 @@ if(EMSCRIPTEN)
         "SHELL:--preload-file ${CMAKE_CURRENT_SOURCE_DIR}/vendored/Inter/InterVariable.ttf@/InterVariable.ttf"
     )
     # HTML shell: page, styles, menu bar and save persistence
-    add_custom_command(TARGET Realmz POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/web" "$<TARGET_FILE_DIR:Realmz>"
+    add_custom_target(realmz_web_shell ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/web" "${CMAKE_BINARY_DIR}"
     )
+    add_dependencies(Realmz realmz_web_shell)
 elseif(NOT WIN32 AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     target_compile_options(Realmz PRIVATE -fsanitize=address)
     target_link_options(Realmz PRIVATE -fsanitize=address)

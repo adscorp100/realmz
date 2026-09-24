@@ -2,27 +2,76 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#202020">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>Realmz</title>
 <link rel="stylesheet" href="realmz-web.css">
 </head>
 <body>
 <div id="menubar" role="menubar"></div>
-<div id="stage">
-  <canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
-  <div id="overlay">
-    <div id="status">Loading Realmz...</div>
-    <progress id="progress" max="100" value="0"></progress>
-    <button id="start" hidden>Click to play</button>
+<div id="mobilebar">
+  <button id="open-sheet" type="button" aria-label="Menu">&#9776; Menu</button>
+  <span class="spacer"></span>
+  <button id="show-keyboard" type="button" aria-label="Keyboard">&#9000;</button>
+  <button id="toggle-controls" type="button" aria-label="Show or hide controls">&#10021;</button>
+  <button id="fullscreen" type="button" aria-label="Fullscreen">&#9974;</button>
+</div>
+<div id="main">
+  <div id="stage">
+    <canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
+    <div id="overlay">
+      <div id="status">Loading Realmz...</div>
+      <progress id="progress" max="100" value="0"></progress>
+      <button id="start" hidden>Tap to play</button>
+      <p class="credit">Realmz &copy; 1994 Tim Phillips. Modern port by the <a href="https://github.com/Realmz-Castle/realmz">Realmz Castle</a> project. Licensed <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>.</p>
+    </div>
+  </div>
+  <div id="controls" aria-label="Game controls">
+    <div id="dpad">
+      <button data-code="Numpad7" data-key="7" aria-label="Up left">&#8598;</button>
+      <button data-code="Numpad8" data-key="8" aria-label="Up">&#9650;</button>
+      <button data-code="Numpad9" data-key="9" aria-label="Up right">&#8599;</button>
+      <button data-code="Numpad4" data-key="4" aria-label="Left">&#9664;</button>
+      <button data-code="Enter" data-key="Enter" class="center" aria-label="Enter">&#8629;</button>
+      <button data-code="Numpad6" data-key="6" aria-label="Right">&#9654;</button>
+      <button data-code="Numpad1" data-key="1" aria-label="Down left">&#8601;</button>
+      <button data-code="Numpad2" data-key="2" aria-label="Down">&#9660;</button>
+      <button data-code="Numpad3" data-key="3" aria-label="Down right">&#8600;</button>
+    </div>
+    <div id="actions">
+      <button data-code="Space" data-key=" " aria-label="Space">Space</button>
+      <button data-code="Escape" data-key="Escape" aria-label="Escape">Esc</button>
+      <button data-code="Tab" data-key="Tab" aria-label="Tab">Tab</button>
+    </div>
   </div>
 </div>
 <footer>
   <span>Realmz &copy; 1994 Tim Phillips. Modern port by the <a href="https://github.com/Realmz-Castle/realmz">Realmz Castle</a> project. Licensed <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>.</span>
   <span class="tools">
-    <button id="export-saves" type="button">Export saves</button>
-    <label class="button">Import saves<input id="import-saves" type="file" accept=".zip,.json" hidden></label>
+    <button class="export-saves" type="button">Export saves</button>
+    <label class="button">Import saves<input class="import-saves" type="file" accept=".json" hidden></label>
   </span>
 </footer>
+<div id="sheet" hidden>
+  <div class="sheet-header">
+    <strong>Realmz</strong>
+    <button id="close-sheet" type="button" aria-label="Close menu">&#10005;</button>
+  </div>
+  <div id="sheet-menus"></div>
+  <div class="sheet-footer">
+    <div class="tools">
+      <button class="export-saves" type="button">Export saves</button>
+      <label class="button">Import saves<input class="import-saves" type="file" accept=".json" hidden></label>
+    </div>
+    <p class="credit">Realmz &copy; 1994 Tim Phillips. Modern port by the <a href="https://github.com/Realmz-Castle/realmz">Realmz Castle</a> project. Licensed <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>.</p>
+  </div>
+</div>
+<input id="keyboard-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-hidden="true">
 <script src="realmz-web.js"></script>
 <script src="Realmz.js" async></script>
 </body>

@@ -60,7 +60,7 @@
     return bytes;
   }
 
-  document.getElementById("export-saves").addEventListener("click", function () {
+  function exportSaves() {
     if (!Module.FS) return;
     var files = {};
     listFiles(PERSIST_DIR, []).forEach(function (path) {
@@ -72,9 +72,9 @@
     a.download = "realmz-saves-" + new Date().toISOString().slice(0, 10) + ".json";
     a.click();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
-  });
+  }
 
-  document.getElementById("import-saves").addEventListener("change", function (ev) {
+  function importSaves(ev) {
     var file = ev.target.files[0];
     if (!file || !Module.FS) return;
     file.text().then(function (text) {
@@ -96,7 +96,10 @@
     }).catch(function (e) {
       alert("Import failed: " + e.message);
     });
-  });
+  }
+
+  document.querySelectorAll(".export-saves").forEach(function (b) { b.addEventListener("click", exportSaves); });
+  document.querySelectorAll(".import-saves").forEach(function (i) { i.addEventListener("change", importSaves); });
 
   setInterval(persist, 5000);
   document.addEventListener("visibilitychange", function () {
@@ -232,12 +235,14 @@
     });
   }
 
-  document.addEventListener("mousedown", function (ev) {
+  function dismissOutside(ev) {
     if (!ev.target.closest(".menu") && !ev.target.closest("#menubar")) {
       if (popupState) finishPopup(0);
       closeMenus();
     }
-  }, true);
+  }
+  document.addEventListener("mousedown", dismissOutside, true);
+  document.addEventListener("touchstart", dismissOutside, { capture: true, passive: true });
 
   function finishPopup(item) {
     if (!popupState) return;
@@ -288,6 +293,7 @@
       var wasOpen = openMenu ? Array.prototype.indexOf.call(menuBarEl.children, openMenu.titleEl) : -1;
       closeMenus();
       renderMenuBar();
+      renderSheet();
       if (wasOpen >= 0 && menuBarEl.children[wasOpen]) {
         openTitle(menuBarEl.children[wasOpen], currentMenus.menus[wasOpen]);
       }
@@ -296,14 +302,214 @@
       closeMenus();
       var menu = JSON.parse(json);
       var rect = canvas.getBoundingClientRect();
-      var sx = rect.width / canvas.clientWidth || 1;
       var panel = buildPanel(menu, function (id, item) { finishPopup(item); }, 0);
-      panel.style.left = rect.left + x * sx + "px";
-      panel.style.top = rect.top + y * sx + "px";
+      var scale = rect.width / 800;
       document.body.appendChild(panel);
+      var left = rect.left + x * scale, top = rect.top + y * scale;
+      left = Math.max(0, Math.min(left, window.innerWidth - panel.offsetWidth));
+      top = Math.max(0, Math.min(top, window.innerHeight - panel.offsetHeight));
+      panel.style.left = left + "px";
+      panel.style.top = top + "px";
       popupState = { panel: panel };
     },
   };
+
+
+  // ---------------------------------------------------------------------------
+  // Touch devices: full-screen menu sheet, on-screen controls, soft keyboard
+
+  var isTouch = window.matchMedia("(pointer: coarse)").matches || "ontouchstart" in window || /[?&]touch=1/.test(location.search);
+  if (/[?&]touch=0/.test(location.search)) isTouch = false;
+  if (isTouch) document.body.classList.add("touch");
+
+  var sheetEl = document.getElementById("sheet");
+  var sheetMenusEl = document.getElementById("sheet-menus");
+  var openSheetMenuId = null;
+
+  function openSheet() {
+    renderSheet();
+    sheetEl.hidden = false;
+  }
+
+  function closeSheet() {
+    sheetEl.hidden = true;
+  }
+
+  function buildSheetItems(menu, depth) {
+    var list = document.createElement("div");
+    list.className = "sheet-items";
+    menu.items.forEach(function (item, index) {
+      if (item.hidden) return;
+      var row = document.createElement("div");
+      if (item.name === "-" || item.name === "") {
+        row.className = "separator";
+        list.appendChild(row);
+        return;
+      }
+      var enabled = menu.enabled && item.enabled;
+      row.className = "item" + (enabled ? "" : " disabled");
+      if (item.style & 1) row.classList.add("bold");
+      if (item.style & 2) row.classList.add("italic");
+      var mark = document.createElement("span");
+      mark.className = "mark";
+      mark.textContent = markGlyph(item);
+      var label = document.createElement("span");
+      label.className = "label";
+      label.textContent = item.name;
+      row.appendChild(mark);
+      row.appendChild(label);
+      list.appendChild(row);
+
+      var sub = item.key === 0x1B && item.mark && depth < 3 ? findSubmenu(item.mark) : null;
+      if (sub) {
+        list.appendChild(buildSheetItems(sub, depth + 1));
+      } else if (enabled) {
+        row.addEventListener("click", function () {
+          closeSheet();
+          queueSelection(menu.id, index + 1);
+        });
+      }
+    });
+    return list;
+  }
+
+  function renderSheet() {
+    if (!sheetMenusEl) return;
+    sheetMenusEl.textContent = "";
+    currentMenus.menus.forEach(function (menu) {
+      var section = document.createElement("div");
+      section.className = "sheet-menu" + (menu.enabled ? "" : " disabled") + (openSheetMenuId === menu.id ? " open" : "");
+      var title = document.createElement("div");
+      title.className = "sheet-title";
+      title.textContent = displayTitle(menu.title) === "" ? "Apple" : displayTitle(menu.title);
+      title.addEventListener("click", function () {
+        if (!menu.enabled) return;
+        var open = !section.classList.contains("open");
+        sheetMenusEl.querySelectorAll(".sheet-menu.open").forEach(function (m) { m.classList.remove("open"); });
+        section.classList.toggle("open", open);
+        openSheetMenuId = open ? menu.id : null;
+      });
+      section.appendChild(title);
+      section.appendChild(buildSheetItems(menu, 0));
+      sheetMenusEl.appendChild(section);
+    });
+  }
+
+  document.getElementById("open-sheet").addEventListener("click", openSheet);
+  document.getElementById("close-sheet").addEventListener("click", closeSheet);
+
+  // Synthetic keyboard events. SDL reads KeyboardEvent.code for the scancode
+  // and keypress charCode for text, so both are filled in.
+  var KEY_CODES = { Enter: 13, Escape: 27, Tab: 9, Backspace: 8, " ": 32,
+    ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40 };
+  function keyCodeFor(key, code) {
+    if (/^Numpad\d$/.test(code)) return 96 + parseInt(code.slice(6), 10);
+    if (KEY_CODES[key] !== undefined) return KEY_CODES[key];
+    if (key.length === 1) return key.toUpperCase().charCodeAt(0);
+    return 0;
+  }
+  function codeForChar(ch) {
+    if (/^[a-z]$/i.test(ch)) return "Key" + ch.toUpperCase();
+    if (/^[0-9]$/.test(ch)) return "Digit" + ch;
+    if (ch === " ") return "Space";
+    return "";
+  }
+  function sendKey(type, key, code, extra) {
+    var kc = keyCodeFor(key, code);
+    var init = { key: key, code: code, keyCode: kc, which: kc, bubbles: true, cancelable: true,
+      location: /^Numpad/.test(code) ? 3 : 0 };
+    if (type === "keypress") {
+      init.charCode = key.length === 1 ? key.charCodeAt(0) : (key === "Enter" ? 13 : 0);
+      init.keyCode = init.charCode;
+      init.which = init.charCode;
+    }
+    if (extra) Object.keys(extra).forEach(function (k) { init[k] = extra[k]; });
+    window.dispatchEvent(new KeyboardEvent(type, init));
+  }
+  function tapKey(key, code) {
+    sendKey("keydown", key, code);
+    if (key.length === 1 || key === "Enter") sendKey("keypress", key, code);
+    sendKey("keyup", key, code);
+  }
+
+  // D-pad and action buttons: tap for one step, hold to keep walking.
+  document.querySelectorAll("#controls button").forEach(function (btn) {
+    var timer = null;
+    var key = btn.dataset.key, code = btn.dataset.code;
+    function stop() {
+      if (timer) { clearTimeout(timer); timer = null; }
+      btn.classList.remove("pressed");
+    }
+    btn.addEventListener("pointerdown", function (ev) {
+      ev.preventDefault();
+      btn.setPointerCapture(ev.pointerId);
+      btn.classList.add("pressed");
+      tapKey(key, code);
+      var repeat = function () { tapKey(key, code); timer = setTimeout(repeat, 220); };
+      timer = setTimeout(repeat, 450);
+    });
+    btn.addEventListener("pointerup", stop);
+    btn.addEventListener("pointercancel", stop);
+    btn.addEventListener("lostpointercapture", stop);
+    btn.addEventListener("contextmenu", function (ev) { ev.preventDefault(); });
+  });
+
+  // Soft keyboard: a hidden text field brings up the OS keyboard, and what's
+  // typed into it is forwarded to the game as key events.
+  var kbInput = document.getElementById("keyboard-input");
+  var kbButton = document.getElementById("show-keyboard");
+  kbButton.addEventListener("click", function () {
+    if (document.activeElement === kbInput) {
+      kbInput.blur();
+    } else {
+      kbInput.value = "";
+      kbInput.focus();
+    }
+  });
+  kbInput.addEventListener("focus", function () { kbButton.classList.add("on"); });
+  kbInput.addEventListener("blur", function () { kbButton.classList.remove("on"); });
+  kbInput.addEventListener("keydown", function (ev) {
+    ev.stopPropagation();
+    if (ev.isComposing || ev.key === "Unidentified" || ev.key === "Process") return;
+    if (ev.key.length === 1) return; // arrives via the input event
+    ev.preventDefault();
+    tapKey(ev.key, ev.code || ev.key);
+  });
+  kbInput.addEventListener("keyup", function (ev) { ev.stopPropagation(); });
+  kbInput.addEventListener("keypress", function (ev) { ev.stopPropagation(); });
+  kbInput.addEventListener("input", function (ev) {
+    if (ev.inputType === "deleteContentBackward") {
+      tapKey("Backspace", "Backspace");
+    } else if (ev.data) {
+      Array.from(ev.data).forEach(function (ch) { tapKey(ch, codeForChar(ch)); });
+    } else if (ev.inputType === "insertLineBreak") {
+      tapKey("Enter", "Enter");
+    }
+    kbInput.value = "";
+  });
+
+  document.getElementById("toggle-controls").addEventListener("click", function () {
+    document.body.classList.toggle("controls-hidden");
+    this.classList.toggle("on", !document.body.classList.contains("controls-hidden"));
+    fitCanvas();
+  });
+  document.getElementById("toggle-controls").classList.add("on");
+
+  var fsButton = document.getElementById("fullscreen");
+  var fsTarget = document.documentElement;
+  if (!(fsTarget.requestFullscreen || fsTarget.webkitRequestFullscreen)) {
+    fsButton.hidden = true; // iPhone Safari: use Add to Home Screen instead
+  }
+  fsButton.addEventListener("click", function () {
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    } else {
+      var p = (fsTarget.requestFullscreen || fsTarget.webkitRequestFullscreen).call(fsTarget);
+      if (p && p.then && screen.orientation && screen.orientation.lock) {
+        p.then(function () { return screen.orientation.lock("landscape"); }).catch(function () {});
+      }
+    }
+  });
 
   // ---------------------------------------------------------------------------
   // Emscripten module
@@ -361,6 +567,8 @@
     canvas.style.setProperty("height", Math.floor(600 * scale) + "px", "important");
   }
   window.addEventListener("resize", fitCanvas);
+  window.addEventListener("orientationchange", function () { setTimeout(fitCanvas, 300); });
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", fitCanvas);
   fitCanvas();
 
   startEl.addEventListener("click", function () {
