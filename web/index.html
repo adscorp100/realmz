@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="theme-color" content="#202020">
+<meta name="theme-color" content="#000000">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Realmz</title>
@@ -15,20 +15,25 @@
 <body>
 <div id="menubar" role="menubar"></div>
 <div id="mobilebar">
-  <button id="open-sheet" type="button" aria-label="Menu">&#9776; Menu</button>
+  <button id="open-sheet" type="button" aria-label="Menu">Menu</button>
   <span class="spacer"></span>
-  <button id="show-keyboard" type="button" aria-label="Keyboard">&#9000;</button>
-  <button id="toggle-controls" type="button" aria-label="Show or hide controls">&#10021;</button>
-  <button id="fullscreen" type="button" aria-label="Fullscreen">&#9974;</button>
+  <span class="right-tools">
+    <button id="show-keyboard" type="button" aria-label="Keyboard">Abc</button>
+    <button id="toggle-controls" class="icon" type="button" aria-label="Show or hide controls">&#10021;</button>
+    <button id="fullscreen" class="icon" type="button" aria-label="Fullscreen">&#9974;</button>
+  </span>
 </div>
 <div id="main">
   <div id="stage">
     <canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
     <div id="overlay">
+      <div class="overlay-panel">
+      <h1>Realmz</h1>
       <div id="status">Loading Realmz...</div>
       <progress id="progress" max="100" value="0"></progress>
-      <button id="start" hidden>Tap to play</button>
+      <button id="start" hidden>Play</button>
       <p class="credit">Realmz &copy; 1994 Tim Phillips. Modern port by the <a href="https://github.com/Realmz-Castle/realmz">Realmz Castle</a> project. Licensed <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>.</p>
+      </div>
     </div>
   </div>
   <div id="controls" aria-label="Game controls">
@@ -71,7 +76,7 @@
     <p class="credit">Realmz &copy; 1994 Tim Phillips. Modern port by the <a href="https://github.com/Realmz-Castle/realmz">Realmz Castle</a> project. Licensed <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>.</p>
   </div>
 </div>
-<input id="keyboard-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-hidden="true">
+<input id="keyboard-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-hidden="true">
 <script src="realmz-web.js"></script>
 <script src="Realmz.js" async></script>
 </body>

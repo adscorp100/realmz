@@ -1,4 +1,7 @@
 #include "WindowManager.hpp"
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 
 #include "PortMenu.hpp"
 #include "PortPrefs.hpp"
@@ -1418,6 +1421,13 @@ void WindowManager::on_dialog_item_focus_changed() {
     wm_log.info_f("Ending SDL text input");
     SDL_StopTextInput(this->sdl_window.get());
     this->text_editing_active = false;
+#ifdef __EMSCRIPTEN__
+    // SDL has no on-screen keyboard support in browsers; the web shell shows
+    // the phone's keyboard for edit fields itself.
+    EM_ASM({
+      if (Module.realmzTextInput) Module.realmzTextInput(0, 0, 0, 0, 0);
+    });
+#endif
   }
 
   if (this->top_window &&
@@ -1459,6 +1469,13 @@ void WindowManager::on_dialog_item_focus_changed() {
     SDL_DestroyProperties(props);
 
     this->text_editing_active = true;
+#ifdef __EMSCRIPTEN__
+    // Field position in 800x600 game coordinates.
+    EM_ASM({
+      if (Module.realmzTextInput) Module.realmzTextInput(1, $0, $1, $2, $3);
+    }, window_rect.left + item_rect.left, window_rect.top + item_rect.top,
+        item_rect.right - item_rect.left, item_rect.bottom - item_rect.top);
+#endif
   }
 }
 

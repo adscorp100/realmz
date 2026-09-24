@@ -1,7 +1,36 @@
+/* Realmz web shell. Touch controls, the menu sheet and the start screen use
+   the game's own look: stone texture, bevelled frames, Black Chancery in
+   yellow and cyan. */
+
+@font-face {
+  font-family: "Black Chancery";
+  src: url("fonts/BlackChancery.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "ChicagoFLF";
+  src: url("fonts/ChicagoFLF.ttf") format("truetype");
+  font-display: swap;
+}
+
+:root {
+  --rz-yellow: #ffff00;
+  --rz-cyan: #00ffff;
+  --rz-green: #00ff00;
+  --rz-red: #ff0000;
+  --rz-grey: #cccccc;
+  --rz-stone: #535353 url("stone.png") repeat;
+  --rz-stone-dark: #3a3a3a url("stone.png") repeat;
+  --rz-light: #a8a8a8;
+  --rz-dark: #1c1c1c;
+  --rz-script: "Black Chancery", "Apple Chancery", "Palatino", serif;
+}
+
 html, body {
   margin: 0;
   height: 100%;
-  background: #202020;
+  background: #000;
   color: #ddd;
   font: 13px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
   overscroll-behavior: none;
@@ -20,20 +49,57 @@ body {
 }
 
 a {
-  color: #bbb;
+  color: var(--rz-cyan);
 }
 
-button, .button {
-  font: inherit;
-  color: #000;
-  background: #eee;
-  border: 1px solid #000;
-  border-radius: 4px;
+/* A raised Realmz button: stone face, light top-left edge, dark bottom-right
+   edge. Pressing it sinks the bevel. */
+.rz-button,
+button,
+.button {
+  font-family: var(--rz-script);
+  font-size: 18px;
+  color: var(--rz-yellow);
+  text-shadow: 1px 1px 0 #000;
+  background: var(--rz-stone);
+  border: 2px solid;
+  border-color: var(--rz-light) var(--rz-dark) var(--rz-dark) var(--rz-light);
+  border-radius: 0;
+  box-shadow: 0 0 0 1px #000;
+  padding: 4px 12px;
   cursor: pointer;
   touch-action: manipulation;
+  line-height: 1.1;
 }
 
-/* ---------------------------------------------------------------- menu bar */
+button:focus {
+  outline: none;
+}
+
+button:focus-visible {
+  outline: 1px dotted var(--rz-yellow);
+  outline-offset: 2px;
+}
+
+body.touch button:focus-visible {
+  outline: none;
+}
+
+button:active,
+.button:active,
+button.pressed {
+  border-color: var(--rz-dark) var(--rz-light) var(--rz-light) var(--rz-dark);
+  background: var(--rz-stone-dark);
+  color: var(--rz-cyan);
+}
+
+button.on {
+  color: var(--rz-green);
+  border-color: var(--rz-dark) var(--rz-light) var(--rz-light) var(--rz-dark);
+  background: var(--rz-stone-dark);
+}
+
+/* ---------------------------------------------------- desktop Mac menu bar */
 
 #menubar {
   display: flex;
@@ -149,13 +215,10 @@ button, .button {
   position: absolute;
   inset: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
   padding: 16px;
-  background: #202020;
-  text-align: center;
+  background: #000;
   z-index: 5;
 }
 
@@ -163,15 +226,67 @@ button, .button {
   display: none;
 }
 
+.overlay-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 460px;
+  padding: 18px 22px;
+  text-align: center;
+  background: var(--rz-stone);
+  border: 3px solid;
+  border-color: var(--rz-light) var(--rz-dark) var(--rz-dark) var(--rz-light);
+  box-shadow: 0 0 0 1px #000;
+}
+
+.overlay-panel h1 {
+  margin: 0;
+  font: 44px var(--rz-script);
+  color: var(--rz-yellow);
+  text-shadow: 2px 2px 0 #000;
+  font-weight: normal;
+}
+
+#status {
+  font: 18px var(--rz-script);
+  color: var(--rz-cyan);
+  text-shadow: 1px 1px 0 #000;
+}
+
+#progress {
+  width: 240px;
+  height: 12px;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 2px solid;
+  border-color: var(--rz-dark) var(--rz-light) var(--rz-light) var(--rz-dark);
+  background: #222;
+}
+
+#progress::-webkit-progress-bar {
+  background: #222;
+}
+
+#progress::-webkit-progress-value {
+  background: var(--rz-yellow);
+}
+
+#progress::-moz-progress-bar {
+  background: var(--rz-yellow);
+}
+
 #start {
-  padding: 10px 24px;
-  font-size: 16px;
+  font-size: 26px;
+  padding: 8px 28px;
+  color: var(--rz-green);
 }
 
 .credit {
   font-size: 11px;
-  color: #999;
+  color: var(--rz-grey);
   max-width: 480px;
+  margin: 0;
 }
 
 footer {
@@ -183,6 +298,7 @@ footer {
   padding: 4px 10px;
   font-size: 11px;
   color: #999;
+  background: #202020;
 }
 
 .tools {
@@ -190,9 +306,10 @@ footer {
   gap: 8px;
 }
 
-footer button, footer .button {
-  padding: 2px 8px;
-  font-size: 11px;
+footer button,
+footer .button {
+  padding: 1px 8px;
+  font-size: 14px;
 }
 
 /* ---------------------------------------------- touch-only elements (hidden) */
@@ -205,7 +322,7 @@ footer button, footer .button {
 #keyboard-input {
   position: fixed;
   left: 0;
-  bottom: 0;
+  top: 0;
   width: 1px;
   height: 1px;
   opacity: 0;
@@ -213,7 +330,10 @@ footer button, footer .button {
   padding: 0;
   font-size: 16px; /* stops iOS zooming when it gets focus */
   pointer-events: none;
+  caret-color: transparent;
 }
+
+/* ---------------------------------------------------------- menu sheet */
 
 #sheet {
   position: fixed;
@@ -221,10 +341,9 @@ footer button, footer .button {
   z-index: 50;
   display: flex;
   flex-direction: column;
-  background: #f4f4f4;
-  color: #000;
+  background: var(--rz-stone);
+  color: var(--rz-yellow);
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-  font: 16px "ChicagoFLF", -apple-system, sans-serif;
 }
 
 #sheet[hidden] {
@@ -235,35 +354,62 @@ footer button, footer .button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
-  border-bottom: 1px solid #000;
-  background: #eee;
+  padding: 8px 12px;
+  border-bottom: 3px solid;
+  border-color: var(--rz-dark);
+  box-shadow: 0 1px 0 var(--rz-light);
+}
+
+.sheet-header strong {
+  font: 30px var(--rz-script);
+  font-weight: normal;
+  color: var(--rz-yellow);
+  text-shadow: 2px 2px 0 #000;
 }
 
 .sheet-header button {
-  font-size: 18px;
-  width: 44px;
+  width: 48px;
   height: 44px;
+  padding: 0;
+  font-size: 20px;
+  color: var(--rz-red);
 }
 
 #sheet-menus {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  padding: 8px 10px;
+}
+
+.sheet-menu {
+  margin-bottom: 6px;
+  border: 2px solid;
+  border-color: var(--rz-light) var(--rz-dark) var(--rz-dark) var(--rz-light);
+  box-shadow: 0 0 0 1px #000;
 }
 
 .sheet-menu > .sheet-title {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 16px;
-  border-bottom: 1px solid #ccc;
-  font-weight: bold;
+  min-height: 44px;
+  padding: 0 14px;
+  font: 22px var(--rz-script);
+  color: var(--rz-yellow);
+  text-shadow: 1px 1px 0 #000;
 }
 
 .sheet-menu > .sheet-title::after {
   content: "\25B8";
+  font-family: -apple-system, sans-serif;
+  font-size: 16px;
   transition: transform 0.15s;
+}
+
+.sheet-menu.open > .sheet-title {
+  color: var(--rz-cyan);
+  border-bottom: 2px solid var(--rz-dark);
 }
 
 .sheet-menu.open > .sheet-title::after {
@@ -271,12 +417,12 @@ footer button, footer .button {
 }
 
 .sheet-menu.disabled > .sheet-title {
-  color: #999;
+  color: #8a8a8a;
 }
 
 .sheet-items {
   display: none;
-  background: #fff;
+  background: rgba(0, 0, 0, 0.25);
 }
 
 .sheet-menu.open > .sheet-items {
@@ -287,63 +433,59 @@ footer button, footer .button {
   display: flex;
   align-items: center;
   min-height: 44px;
-  padding: 0 16px 0 10px;
-  border-bottom: 1px solid #eee;
+  padding: 0 14px 0 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.45);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
+  font: 15px "ChicagoFLF", -apple-system, sans-serif;
+  color: var(--rz-yellow);
+  text-shadow: 1px 1px 0 #000;
 }
 
 .sheet-items .item .mark {
   width: 22px;
   text-align: center;
+  color: var(--rz-green);
 }
 
 .sheet-items .item .label {
   flex: 1;
 }
 
-.sheet-items .item .key {
-  color: #888;
-  font-size: 13px;
-}
-
 .sheet-items .item.disabled {
-  color: #aaa;
+  color: #8a8a8a;
 }
 
 .sheet-items .item:not(.disabled):active {
-  background: #000;
-  color: #fff;
+  background: rgba(0, 0, 0, 0.5);
+  color: var(--rz-cyan);
 }
 
 .sheet-items .separator {
-  height: 6px;
-  background: #eee;
-  border: 0;
+  height: 4px;
+  background: var(--rz-dark);
+  box-shadow: 0 1px 0 var(--rz-light);
 }
 
 .sheet-items .sheet-items {
   display: block;
   padding-left: 18px;
-  background: #fafafa;
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .sheet-footer {
-  padding: 10px 14px;
-  border-top: 1px solid #000;
-  background: #eee;
+  padding: 10px 12px;
+  border-top: 3px solid var(--rz-dark);
+  box-shadow: inset 0 1px 0 var(--rz-light);
+}
+
+.sheet-footer .tools {
+  margin-bottom: 8px;
 }
 
 .sheet-footer .tools button,
 .sheet-footer .tools .button {
-  padding: 8px 12px;
-  font-size: 14px;
-}
-
-.sheet-footer .credit {
-  color: #555;
-}
-
-.sheet-footer a {
-  color: #333;
+  font-size: 18px;
+  padding: 6px 12px;
 }
 
 /* ------------------------------------------------------------ touch layout */
@@ -358,28 +500,30 @@ body.touch #mobilebar {
   flex: none;
   align-items: center;
   gap: 6px;
-  padding: 4px 6px;
-  background: #111;
-  border-bottom: 1px solid #000;
+  padding: 5px 6px;
+  background: var(--rz-stone);
+  border-bottom: 2px solid var(--rz-dark);
 }
 
 body.touch #mobilebar .spacer {
   flex: 1;
 }
 
-body.touch #mobilebar button {
-  min-width: 44px;
-  height: 36px;
-  padding: 0 12px;
-  font-size: 16px;
-  background: #333;
-  color: #eee;
-  border-color: #555;
+body.touch #mobilebar .right-tools {
+  display: flex;
+  gap: 6px;
 }
 
-body.touch #mobilebar button.on {
-  background: #eee;
-  color: #000;
+body.touch #mobilebar button {
+  min-width: 46px;
+  height: 40px;
+  padding: 0 12px;
+  font-size: 20px;
+}
+
+body.touch #mobilebar button.icon {
+  font-family: -apple-system, "Segoe UI Symbol", sans-serif;
+  font-size: 18px;
 }
 
 body.touch #controls {
@@ -397,32 +541,24 @@ body.touch.controls-hidden #controls {
 
 #dpad {
   display: grid;
-  grid-template-columns: repeat(3, 56px);
-  grid-template-rows: repeat(3, 56px);
-  gap: 4px;
+  grid-template-columns: repeat(3, 58px);
+  grid-template-rows: repeat(3, 58px);
+  gap: 3px;
+  padding: 4px;
+  background: #000;
+  border: 2px solid;
+  border-color: var(--rz-dark) var(--rz-light) var(--rz-light) var(--rz-dark);
 }
 
-#dpad button,
-#actions button {
-  background: rgba(238, 238, 238, 0.85);
-  border: 1px solid #000;
-  border-radius: 10px;
-  font-size: 22px;
-  color: #000;
+#dpad button {
   padding: 0;
+  font-family: -apple-system, "Segoe UI Symbol", sans-serif;
+  font-size: 24px;
 }
 
 #dpad button.center {
-  font-size: 20px;
-  background: rgba(200, 200, 120, 0.9);
-}
-
-#dpad button:active,
-#actions button:active,
-#dpad button.pressed,
-#actions button.pressed {
-  background: #000;
-  color: #fff;
+  font-size: 22px;
+  color: var(--rz-green);
 }
 
 #actions {
@@ -432,9 +568,18 @@ body.touch.controls-hidden #controls {
 }
 
 #actions button {
-  width: 84px;
+  width: 88px;
   height: 48px;
-  font-size: 16px;
+  font-size: 22px;
+}
+
+body.touch.wants-text:not(.typing) #show-keyboard {
+  animation: rz-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes rz-pulse {
+  0%, 100% { color: var(--rz-yellow); box-shadow: 0 0 0 1px #000; }
+  50% { color: var(--rz-cyan); box-shadow: 0 0 0 1px #000, 0 0 10px 2px var(--rz-cyan); }
 }
 
 /* Landscape phones: give the game the full height and float the toolbar and
@@ -454,7 +599,28 @@ body.touch.controls-hidden #controls {
 
   body.touch #mobilebar button {
     pointer-events: auto;
-    opacity: 0.85;
+  }
+
+  /* Reserve side columns for the D-pad and buttons so they never cover the
+     game; on small phones the game screen shrinks to fit between them. */
+  body.touch:not(.controls-hidden) #stage {
+    box-sizing: border-box;
+    padding: 0 calc(env(safe-area-inset-right) + 88px) 0 calc(env(safe-area-inset-left) + 166px);
+  }
+
+  body.touch.controls-hidden #stage {
+    box-sizing: border-box;
+    padding-right: 88px;
+  }
+
+  /* The side margins are narrow, so stack the right-hand buttons. */
+  body.touch #mobilebar {
+    align-items: flex-start;
+  }
+
+  body.touch #mobilebar .right-tools {
+    flex-direction: column;
+    align-items: flex-end;
   }
 
   body.touch #controls {
@@ -467,16 +633,20 @@ body.touch.controls-hidden #controls {
 
   body.touch #controls > * {
     pointer-events: auto;
-    opacity: 0.8;
   }
 
   body.touch #dpad {
-    grid-template-columns: repeat(3, 48px);
-    grid-template-rows: repeat(3, 48px);
+    grid-template-columns: repeat(3, 46px);
+    grid-template-rows: repeat(3, 46px);
+  }
+
+  body.touch #dpad button {
+    font-size: 20px;
   }
 
   body.touch #actions button {
-    width: 68px;
+    width: 72px;
     height: 42px;
+    font-size: 20px;
   }
 }

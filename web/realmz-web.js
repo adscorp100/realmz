@@ -10,6 +10,7 @@
   var overlayEl = document.getElementById("overlay");
   var startEl = document.getElementById("start");
   var canvas = document.getElementById("canvas");
+  var stageEl = document.getElementById("stage");
 
   // ---------------------------------------------------------------------------
   // Save persistence (IndexedDB)
@@ -202,7 +203,7 @@
   function queueSelection(menuId, item) {
     closeMenus();
     Module.realmzMenuQueue.push([menuId, item]);
-    canvas.focus();
+    focusGame();
   }
 
   function openTitle(titleEl, menu) {
@@ -320,7 +321,16 @@
 
   var isTouch = window.matchMedia("(pointer: coarse)").matches || "ontouchstart" in window || /[?&]touch=1/.test(location.search);
   if (/[?&]touch=0/.test(location.search)) isTouch = false;
-  if (isTouch) document.body.classList.add("touch");
+  if (isTouch) {
+    document.body.classList.add("touch");
+    // SDL listens for keys on the window, so the canvas never needs focus on
+    // touch devices. Leaving it focusable lets a tap's synthetic mousedown
+    // steal focus from the keyboard field and close the phone keyboard.
+    canvas.removeAttribute("tabindex");
+  }
+  function focusGame() {
+    if (!isTouch) canvas.focus();
+  }
 
   var sheetEl = document.getElementById("sheet");
   var sheetMenusEl = document.getElementById("sheet-menus");
@@ -454,39 +464,112 @@
     btn.addEventListener("contextmenu", function (ev) { ev.preventDefault(); });
   });
 
-  // Soft keyboard: a hidden text field brings up the OS keyboard, and what's
-  // typed into it is forwarded to the game as key events.
+  // Soft keyboard: a hidden text field brings up the phone's keyboard, and
+  // what's typed into it is forwarded to the game as key events. The field
+  // always holds a sentinel so Backspace produces an input event even when
+  // nothing has been typed yet (iOS and Android both need that).
+  var SENTINEL = "__";
   var kbInput = document.getElementById("keyboard-input");
   var kbButton = document.getElementById("show-keyboard");
-  kbButton.addEventListener("click", function () {
-    if (document.activeElement === kbInput) {
-      kbInput.blur();
+  var textField = null; // {x, y, w, h} in 800x600 game coordinates, or null
+
+  function resetKbInput() {
+    kbInput.value = SENTINEL;
+    try { kbInput.setSelectionRange(SENTINEL.length, SENTINEL.length); } catch (e) { /* not focused */ }
+  }
+
+  function showKeyboard() {
+    resetKbInput();
+    kbInput.focus({ preventScroll: true });
+    resetKbInput();
+  }
+
+  function hideKeyboard() {
+    kbInput.blur();
+  }
+
+  // Called by the game (WindowManager) when an edit field gains or loses focus.
+  Module.realmzTextInput = function (active, x, y, w, h) {
+    if (active) {
+      textField = { x: x, y: y, w: w, h: h };
+      // The Abc button pulses while the game is waiting for typed text.
+      document.body.classList.add("wants-text");
+      // Works where the browser allows focusing without a fresh tap (Android
+      // usually does); iOS needs the tap handled below.
+      if (isTouch) showKeyboard();
     } else {
-      kbInput.value = "";
-      kbInput.focus();
+      textField = null;
+      document.body.classList.remove("wants-text");
+      if (document.activeElement === kbInput) hideKeyboard();
     }
+  };
+
+  // iOS only opens the keyboard from inside a touch handler, so while the game
+  // has a text field focused, any tap on the game screen opens it.
+  // Only taps on (or just around) the field itself count, so tapping the
+  // dialog's OK button doesn't flash the keyboard up.
+  function tapIsOnTextField(clientX, clientY) {
+    if (!textField) return false;
+    var rect = canvas.getBoundingClientRect();
+    var scale = rect.width / 800;
+    var gx = (clientX - rect.left) / scale, gy = (clientY - rect.top) / scale;
+    var pad = 14;
+    return gx >= textField.x - pad && gx <= textField.x + textField.w + pad &&
+        gy >= textField.y - pad && gy <= textField.y + textField.h + pad;
+  }
+  stageEl.addEventListener("touchend", function (ev) {
+    var t = ev.changedTouches && ev.changedTouches[0];
+    if (t && document.activeElement !== kbInput && tapIsOnTextField(t.clientX, t.clientY)) showKeyboard();
+  }, { passive: true });
+  stageEl.addEventListener("click", function (ev) {
+    if (isTouch && document.activeElement !== kbInput && tapIsOnTextField(ev.clientX, ev.clientY)) showKeyboard();
   });
-  kbInput.addEventListener("focus", function () { kbButton.classList.add("on"); });
-  kbInput.addEventListener("blur", function () { kbButton.classList.remove("on"); });
+
+  kbButton.addEventListener("click", function () {
+    if (document.activeElement === kbInput) hideKeyboard();
+    else showKeyboard();
+  });
+  kbInput.addEventListener("focus", function () {
+    kbButton.classList.add("on");
+    document.body.classList.add("typing");
+  });
+  kbInput.addEventListener("blur", function () {
+    kbButton.classList.remove("on");
+    document.body.classList.remove("typing");
+    window.scrollTo(0, 0);
+  });
   kbInput.addEventListener("keydown", function (ev) {
     ev.stopPropagation();
     if (ev.isComposing || ev.key === "Unidentified" || ev.key === "Process") return;
-    if (ev.key.length === 1) return; // arrives via the input event
+    // Printable characters and Backspace arrive through the input event.
+    if (ev.key.length === 1 || ev.key === "Backspace") return;
     ev.preventDefault();
     tapKey(ev.key, ev.code || ev.key);
+    // The phone's Return/Done key: pass it on, then put the keyboard away so
+    // the dialog's buttons are reachable.
+    if (ev.key === "Enter") hideKeyboard();
   });
   kbInput.addEventListener("keyup", function (ev) { ev.stopPropagation(); });
   kbInput.addEventListener("keypress", function (ev) { ev.stopPropagation(); });
-  kbInput.addEventListener("input", function (ev) {
-    if (ev.inputType === "deleteContentBackward") {
-      tapKey("Backspace", "Backspace");
-    } else if (ev.data) {
-      Array.from(ev.data).forEach(function (ch) { tapKey(ch, codeForChar(ch)); });
-    } else if (ev.inputType === "insertLineBreak") {
-      tapKey("Enter", "Enter");
+  kbInput.addEventListener("input", function () {
+    var v = kbInput.value;
+    if (v.length < SENTINEL.length) {
+      for (var i = v.length; i < SENTINEL.length; i++) tapKey("Backspace", "Backspace");
+    } else {
+      var typed = v.indexOf(SENTINEL) === 0 ? v.slice(SENTINEL.length) : v.replace(SENTINEL, "");
+      Array.from(typed).forEach(function (ch) {
+        if (ch === "\n") tapKey("Enter", "Enter");
+        else tapKey(ch, codeForChar(ch));
+      });
     }
-    kbInput.value = "";
+    resetKbInput();
   });
+  if (window.visualViewport) {
+    // Keep the page pinned when the keyboard slides up.
+    window.visualViewport.addEventListener("scroll", function () {
+      if (document.activeElement === kbInput) window.scrollTo(0, 0);
+    });
+  }
 
   document.getElementById("toggle-controls").addEventListener("click", function () {
     document.body.classList.toggle("controls-hidden");
@@ -545,7 +628,7 @@
     statusEl.textContent = "Ready.";
     progressEl.hidden = true;
     startEl.hidden = false;
-    startEl.focus();
+    if (!isTouch) startEl.focus();
   };
   Module.onAbort = function (what) {
     overlayEl.classList.remove("hidden");
@@ -558,9 +641,10 @@
 
   // Scale the 800x600 game screen to the largest 4:3 size that fits, using
   // whole-number steps when there's room so pixel art stays crisp.
-  var stageEl = document.getElementById("stage");
   function fitCanvas() {
-    var w = stageEl.clientWidth, h = stageEl.clientHeight;
+    var cs = getComputedStyle(stageEl);
+    var w = stageEl.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    var h = stageEl.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
     var scale = Math.min(w / 800, h / 600);
     if (scale >= 1) scale = Math.max(1, Math.floor(scale * 2) / 2);
     canvas.style.setProperty("width", Math.floor(800 * scale) + "px", "important");
@@ -573,7 +657,7 @@
 
   startEl.addEventListener("click", function () {
     overlayEl.classList.add("hidden");
-    canvas.focus();
+    focusGame();
     Module.callMain([]);
     fitCanvas();
   });
