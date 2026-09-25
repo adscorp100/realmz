@@ -377,7 +377,8 @@ if(EMSCRIPTEN)
     # HTML shell: page, styles, menu bar and save persistence
     add_custom_target(realmz_web_shell ALL
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/web" "${CMAKE_BINARY_DIR}"
-        COMMAND ${CMAKE_COMMAND} -DSRC=${CMAKE_CURRENT_SOURCE_DIR}/web/index.html -DDST=${CMAKE_BINARY_DIR}/index.html
+        COMMAND ${CMAKE_COMMAND} -DSRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/web -DDST_DIR=${CMAKE_BINARY_DIR}
+            "-DFILES=index.html\;realmz-web.css"
             -P ${CMAKE_CURRENT_SOURCE_DIR}/scripts/stamp_web.cmake
     )
     add_dependencies(Realmz realmz_web_shell)

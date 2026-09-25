@@ -4,13 +4,13 @@
 
 @font-face {
   font-family: "Black Chancery";
-  src: url("fonts/BlackChancery.ttf") format("truetype");
+  src: url("fonts/BlackChancery.ttf?v=@BUILD_ID@") format("truetype");
   font-display: swap;
 }
 
 @font-face {
   font-family: "ChicagoFLF";
-  src: url("fonts/ChicagoFLF.ttf") format("truetype");
+  src: url("fonts/ChicagoFLF.ttf?v=@BUILD_ID@") format("truetype");
   font-display: swap;
 }
 
@@ -20,8 +20,8 @@
   --rz-green: #00ff00;
   --rz-red: #ff0000;
   --rz-grey: #cccccc;
-  --rz-stone: #535353 url("stone.png") repeat;
-  --rz-stone-dark: #3a3a3a url("stone.png") repeat;
+  --rz-stone: #535353 url("stone.png?v=@BUILD_ID@") repeat;
+  --rz-stone-dark: #3a3a3a url("stone.png?v=@BUILD_ID@") repeat;
   --rz-light: #a8a8a8;
   --rz-dark: #1c1c1c;
   --rz-script: "Black Chancery", "Apple Chancery", "Palatino", serif;
