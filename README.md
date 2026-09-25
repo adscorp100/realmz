@@ -45,7 +45,7 @@ Pull requests are welcome. Please review the [Contributing Guide](https://github
 ## Building for the web (WebAssembly)
 - Install tools: `brew install emscripten cmake ninja` (Emscripten needs Python 3.10+; set `EMSDK_PYTHON` if your default `python3` is older)
 - Run `scripts/build_web.sh`. It clones and builds phosg and resource_dasm for wasm into `build_web_deps/`, then builds the game into `build_web/`
-- Serve it: `python3 -m http.server 8765 --directory build_web` and open http://localhost:8765/
+- Serve it: `scripts/serve_web.py 8765` and open http://localhost:8765/
 
 Notes on the browser build:
 - The game's blocking, Mac-style event loops run unchanged under Emscripten's Asyncify; `EventManager` yields to the browser every few milliseconds.

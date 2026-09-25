@@ -599,6 +599,10 @@
 
   Module.canvas = canvas;
   Module.noInitialRun = true;
+  // Version the wasm and data URLs like the page's other assets.
+  Module.locateFile = function (path, prefix) {
+    return prefix + path + (window.REALMZ_BUILD ? "?v=" + window.REALMZ_BUILD : "");
+  };
   Module.print = function (t) { console.log(t); };
   Module.printErr = function (t) { console.log(t); };
   Module.setStatus = function (text) {

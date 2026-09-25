@@ -10,7 +10,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Realmz</title>
-<link rel="stylesheet" href="realmz-web.css">
+<link rel="stylesheet" href="realmz-web.css?v=@BUILD_ID@">
 </head>
 <body>
 <div id="menubar" role="menubar"></div>
@@ -77,7 +77,8 @@
   </div>
 </div>
 <input id="keyboard-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-hidden="true">
-<script src="realmz-web.js"></script>
-<script src="Realmz.js" async></script>
+<script>window.REALMZ_BUILD = "@BUILD_ID@";</script>
+<script src="realmz-web.js?v=@BUILD_ID@"></script>
+<script src="Realmz.js?v=@BUILD_ID@" async></script>
 </body>
 </html>
