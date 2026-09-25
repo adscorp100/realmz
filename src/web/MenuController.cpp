@@ -120,6 +120,7 @@ void MCCreatePopupMenu(
 
   // Block (via Asyncify) until the popup is dismissed. -1 means still open.
   int32_t result;
+  WebFlushDisplay();
   while ((result = EM_ASM_INT({
     var r = Module.realmzPopupResult;
     if (r === undefined || r === null) {
@@ -129,6 +130,7 @@ void MCCreatePopupMenu(
     return r;
   })) == -1) {
     emscripten_sleep(16);
+    WebFlushDisplay();
   }
   callback(menu->menu_id, static_cast<int16_t>(result));
 }
@@ -167,4 +169,40 @@ extern "C" EMSCRIPTEN_KEEPALIVE int32_t realmz_web_screen_width(void) {
 
 extern "C" EMSCRIPTEN_KEEPALIVE int32_t realmz_web_screen_height(void) {
   return WindowManager::instance().screen_port.data.get_height();
+}
+
+// Benchmark: milliseconds for n draw-and-present cycles in a tight loop with
+// no yield (the treasure screen's selection animation does ~100), including
+// getting the final frame on screen.
+extern "C" EMSCRIPTEN_KEEPALIVE double realmz_web_bench_draws(int32_t n) {
+  auto& wm = WindowManager::instance();
+  bool was_enabled = wm.set_enable_recomposite(true);
+  double start = emscripten_get_now();
+  for (int32_t i = 0; i < n; i++) {
+    wm.recomposite_all();
+  }
+  WebFlushDisplay();
+  double ms = emscripten_get_now() - start;
+  wm.set_enable_recomposite(was_enabled);
+  return ms;
+}
+
+extern double web_stat_composite_ms, web_stat_present_ms;
+extern int32_t web_stat_composites, web_stat_presents, web_stat_skipped;
+
+// Returns compositor counters since the last call, as a JSON string.
+extern "C" EMSCRIPTEN_KEEPALIVE const char* realmz_web_stats(void) {
+  static std::string out;
+  out = "{\"composites\":" + std::to_string(web_stat_composites) +
+      ",\"compositeMs\":" + std::to_string(web_stat_composite_ms) +
+      ",\"presents\":" + std::to_string(web_stat_presents) +
+      ",\"presentMs\":" + std::to_string(web_stat_present_ms) +
+      ",\"skipped\":" + std::to_string(web_stat_skipped) + "}";
+  web_stat_composite_ms = web_stat_present_ms = 0;
+  web_stat_composites = web_stat_presents = web_stat_skipped = 0;
+  return out.c_str();
+}
+
+void WebFlushDisplay(void) {
+  WindowManager::instance().flush_present();
 }

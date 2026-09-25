@@ -366,8 +366,8 @@ if(EMSCRIPTEN)
         -sSTACK_SIZE=8388608
         -sALLOW_MEMORY_GROWTH=1
         -sINITIAL_MEMORY=134217728
-        -sEXPORTED_RUNTIME_METHODS=FS,callMain,HEAPU8
-        -sEXPORTED_FUNCTIONS=_main,_realmz_web_screen_data,_realmz_web_screen_width,_realmz_web_screen_height
+        -sEXPORTED_RUNTIME_METHODS=FS,callMain,HEAPU8,UTF8ToString
+        -sEXPORTED_FUNCTIONS=_main,_realmz_web_screen_data,_realmz_web_screen_width,_realmz_web_screen_height,_realmz_web_bench_draws,_realmz_web_stats
         -sFORCE_FILESYSTEM=1
         -lidbfs.js
         "SHELL:--preload-file ${CMAKE_CURRENT_SOURCE_DIR}/resources@/"

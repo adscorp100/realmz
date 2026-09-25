@@ -29,6 +29,7 @@ static bool web_yield_if_due() {
   if (now - web_last_yield_ms < 8) {
     return false;
   }
+  WebFlushDisplay();
   emscripten_sleep(0);
   web_last_yield_ms = SDL_GetTicks();
   return true;
@@ -581,6 +582,7 @@ protected:
         if (now >= deadline) {
           break;
         }
+        WebFlushDisplay();
         emscripten_sleep(std::min<uint64_t>(deadline - now, 10));
         web_last_yield_ms = SDL_GetTicks();
         WebMenuPoll();
@@ -628,6 +630,9 @@ void SystemTask(void) {
   // systems since we now have preemptive multitasking, but we can use this
   // function to make the hot loops a bit less hot by sleeping for a CPU time
   // slice or two.
+#ifdef __EMSCRIPTEN__
+  WebFlushDisplay();
+#endif
   SDL_Delay(10);
 }
 

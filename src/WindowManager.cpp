@@ -1,4 +1,5 @@
 #include "WindowManager.hpp"
+#include "PortDelay.hpp"
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
@@ -1479,10 +1480,23 @@ void WindowManager::on_dialog_item_focus_changed() {
   }
 }
 
+#ifdef __EMSCRIPTEN__
+// Profiling counters for the browser build (read via realmz_web_stats).
+double web_stat_composite_ms = 0, web_stat_present_ms = 0;
+int32_t web_stat_composites = 0, web_stat_presents = 0, web_stat_skipped = 0;
+#endif
+
 void WindowManager::recomposite(std::shared_ptr<Window> updated_window) {
   if (!this->recomposite_enabled || (updated_window && !updated_window->visible)) {
+#ifdef __EMSCRIPTEN__
+    web_stat_skipped++;
+#endif
     return;
   }
+#ifdef __EMSCRIPTEN__
+  double web_t0 = emscripten_get_now();
+  web_stat_composites++;
+#endif
 
   std::shared_ptr<Window> window;
   if (!updated_window || enable_translucent_window_debug) {
@@ -1527,10 +1541,42 @@ void WindowManager::recomposite(std::shared_ptr<Window> updated_window) {
     }
   }
 
+#ifdef __EMSCRIPTEN__
+  web_stat_composite_ms += emscripten_get_now() - web_t0;
+#endif
   this->present_screen();
 }
 
 void WindowManager::present_screen() {
+#ifdef __EMSCRIPTEN__
+  // In the browser the canvas only updates when the game hands control back
+  // (see web_yield_if_due in EventManager.cpp), so uploading the screen more
+  // than once per yield is wasted work. Realmz draws piece by piece and every
+  // QuickDraw call recomposites, which made animations like the treasure
+  // screen's item selection do ~100 full-screen uploads for one frame. Just
+  // mark the screen dirty; flush_present() uploads it before the next yield.
+  this->present_pending = true;
+#else
+  this->present_now();
+#endif
+}
+
+void WindowManager::flush_present() {
+  if (this->present_pending) {
+    this->present_pending = false;
+    this->present_now();
+  }
+}
+
+void WindowManager::present_now() {
+#ifdef __EMSCRIPTEN__
+  double web_t0 = emscripten_get_now();
+  web_stat_presents++;
+  struct PresentTimer {
+    double t0;
+    ~PresentTimer() { web_stat_present_ms += emscripten_get_now() - t0; }
+  } web_timer{web_t0};
+#endif
   if (this->sdl_window) {
     auto renderer = SDL_GetRenderer(this->sdl_window.get());
     if (!renderer) {
@@ -2386,7 +2432,7 @@ short TrackControl(ControlHandle handle, Point pt, ProcPtr action_proc) {
         render_window_for_item(item);
         shown = want;
       }
-      SDL_Delay(15);
+      port_delay(15);
     }
     if (item->pressed_part != 0) {
       item->pressed_part = 0;
@@ -2428,7 +2474,7 @@ short TrackControl(ControlHandle handle, Point pt, ProcPtr action_proc) {
             live_proc(handle, kControlIndicatorPart);
           }
         }
-        SDL_Delay(15);
+        port_delay(15);
       }
       item->pressed_part = 0;
       render_window_for_item(item);

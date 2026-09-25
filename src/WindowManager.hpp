@@ -108,6 +108,8 @@ private:
   sdl_window_shared sdl_window;
   bool text_editing_active = false;
   bool recomposite_enabled = true;
+  bool present_pending = false;
+  void present_now();
   SDL_ScaleMode scale_mode = SDL_SCALEMODE_PIXELART;
   bool aspect_locked = true;
   int gamma_idx = 0;
@@ -151,6 +153,10 @@ public:
 
   void recomposite(std::shared_ptr<Window> updated_window);
   bool set_enable_recomposite(bool enable);
+
+  // Uploads the screen now if a present was deferred (browser build only;
+  // elsewhere present_screen() presents immediately).
+  void flush_present();
 
   // Uploads the current contents of screen_port to the SDL window and presents
   // it, without recompositing the window stack first. This is used by code that
