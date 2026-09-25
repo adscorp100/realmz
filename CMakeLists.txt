@@ -378,7 +378,7 @@ if(EMSCRIPTEN)
     add_custom_target(realmz_web_shell ALL
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/web" "${CMAKE_BINARY_DIR}"
         COMMAND ${CMAKE_COMMAND} -DSRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/web -DDST_DIR=${CMAKE_BINARY_DIR}
-            "-DFILES=index.html\;realmz-web.css"
+            "-DFILES=index.html\;realmz-web.css\;sw.js"
             -P ${CMAKE_CURRENT_SOURCE_DIR}/scripts/stamp_web.cmake
     )
     add_dependencies(Realmz realmz_web_shell)

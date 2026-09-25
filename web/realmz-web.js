@@ -666,5 +666,53 @@
     fitCanvas();
   });
 
+  // ---------------------------------------------------------------------------
+  // Offline play: a service worker stores the whole game on the device, so
+  // the home-screen app works with no network (see sw.js).
+
+  var offlineEl = document.getElementById("offline-status");
+  var sheetOfflineEl = document.getElementById("sheet-offline-status");
+  var standalone = window.navigator.standalone === true ||
+      window.matchMedia("(display-mode: standalone)").matches;
+  function setOfflineStatus(text, ready) {
+    [offlineEl, sheetOfflineEl].forEach(function (el) {
+      if (!el) return;
+      el.hidden = false;
+      el.textContent = text;
+      el.classList.toggle("ready", !!ready);
+    });
+  }
+  var readyText = standalone
+    ? "Installed. Works offline."
+    : "Saved for offline play. Share \u2192 Add to Home Screen to install.";
+
+  if ("serviceWorker" in navigator && window.isSecureContext) {
+    navigator.serviceWorker.addEventListener("message", function (ev) {
+      var m = ev.data || {};
+      if (m.type === "realmz-offline-progress") {
+        setOfflineStatus("Saving game for offline play... " + Math.round((m.done * 100) / m.total) + "%");
+      } else if (m.type === "realmz-offline-ready" && m.build === window.REALMZ_BUILD) {
+        setOfflineStatus(readyText, true);
+      }
+    });
+    navigator.serviceWorker.register("sw.js?v=" + window.REALMZ_BUILD).then(function (reg) {
+      if (reg.active && !reg.installing && !reg.waiting &&
+          reg.active.scriptURL.indexOf(window.REALMZ_BUILD) !== -1) {
+        setOfflineStatus(readyText, true);
+      } else {
+        setOfflineStatus("Saving game for offline play...");
+      }
+    }).catch(function (e) {
+      console.warn("Realmz: offline install failed", e);
+      setOfflineStatus("Offline play unavailable: " + e.message);
+    });
+    // Ask the browser not to evict the game or the saves under storage pressure.
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+  }
+  if (standalone) {
+    document.body.classList.add("standalone");
+    document.getElementById("fullscreen").hidden = true;
+  }
+
   window.RealmzModule = Module;
 })();

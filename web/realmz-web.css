@@ -650,3 +650,19 @@ body.touch.wants-text:not(.typing) #show-keyboard {
     font-size: 20px;
   }
 }
+
+#offline-status,
+#sheet-offline-status {
+  font: 15px var(--rz-script);
+  color: var(--rz-cyan);
+  text-shadow: 1px 1px 0 #000;
+}
+
+#offline-status.ready,
+#sheet-offline-status.ready {
+  color: var(--rz-green);
+}
+
+#sheet-offline-status {
+  margin-bottom: 8px;
+}

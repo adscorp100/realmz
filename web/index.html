@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Realmz">
 <meta name="theme-color" content="#000000">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -32,6 +33,7 @@
       <div id="status">Loading Realmz...</div>
       <progress id="progress" max="100" value="0"></progress>
       <button id="start" hidden>Play</button>
+      <div id="offline-status" hidden></div>
       <p class="credit">Realmz &copy; 1994 Tim Phillips. Modern port by the <a href="https://github.com/Realmz-Castle/realmz">Realmz Castle</a> project. Licensed <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>.</p>
       </div>
     </div>
@@ -69,6 +71,7 @@
   </div>
   <div id="sheet-menus"></div>
   <div class="sheet-footer">
+    <div id="sheet-offline-status"></div>
     <div class="tools">
       <button class="export-saves" type="button">Export saves</button>
       <label class="button">Import saves<input class="import-saves" type="file" accept=".json" hidden></label>
