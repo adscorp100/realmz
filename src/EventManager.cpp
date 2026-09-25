@@ -17,6 +17,24 @@
 
 static phosg::PrefixedLogger em_log("[EventManager] ", DEFAULT_LOG_LEVEL);
 
+#ifdef __EMSCRIPTEN__
+// The browser only runs its event loop, paints the canvas and feeds the
+// audio device when the game hands control back. Realmz busy-waits in many
+// places (polling for events, or spinning on TickCount in delay loops during
+// combat animations), so give the browser a turn at least every few
+// milliseconds. Returns true if it yielded.
+static uint64_t web_last_yield_ms = 0;
+static bool web_yield_if_due() {
+  uint64_t now = SDL_GetTicks();
+  if (now - web_last_yield_ms < 8) {
+    return false;
+  }
+  emscripten_sleep(0);
+  web_last_yield_ms = SDL_GetTicks();
+  return true;
+}
+#endif
+
 static constexpr uint16_t EVMOD_RIGHT_CONTROL_KEY_DOWN = 0x8000;
 static constexpr uint16_t EVMOD_RIGHT_OPTION_KEY_DOWN = 0x4000;
 static constexpr uint16_t EVMOD_RIGHT_SHIFT_KEY_DOWN = 0x2000;
@@ -556,7 +574,6 @@ protected:
     // control back to it. Realmz busy-polls for events in many loops, so
     // yield (via Asyncify) at least every few milliseconds, and turn waits
     // into short sleeps instead of blocking inside SDL.
-    static uint64_t last_yield_ms = 0;
     if (wait_ms > 0) {
       uint64_t deadline = SDL_GetTicks() + wait_ms;
       while (!SDL_PollEvent(&e)) {
@@ -565,16 +582,14 @@ protected:
           break;
         }
         emscripten_sleep(std::min<uint64_t>(deadline - now, 10));
-        last_yield_ms = SDL_GetTicks();
+        web_last_yield_ms = SDL_GetTicks();
         WebMenuPoll();
       }
       if (e.type != 0) {
         this->enqueue_sdl_event(e);
       }
       SDL_zero(e);
-    } else if (SDL_GetTicks() - last_yield_ms >= 8) {
-      emscripten_sleep(0);
-      last_yield_ms = SDL_GetTicks();
+    } else if (web_yield_if_due()) {
       WebMenuPoll();
     }
 #else
@@ -593,6 +608,11 @@ protected:
 EventManager em;
 
 uint32_t TickCount(void) {
+#ifdef __EMSCRIPTEN__
+  // delay() and friends spin on TickCount without polling for events; without
+  // this the page freezes and queued sounds never play (notably in combat).
+  web_yield_if_due();
+#endif
   return (SDL_GetTicks() * 60) / SDL_MS_PER_SECOND;
 }
 

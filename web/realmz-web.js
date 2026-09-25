@@ -667,6 +667,31 @@
   });
 
   // ---------------------------------------------------------------------------
+  // Audio unlock. SDL retries AudioContext.resume() from a timer, but iOS only
+  // honours it inside a real tap or keypress, and suspends ("interrupts")
+  // audio again after a phone call, the lock screen or another app's audio.
+  // So retry on every genuine user gesture.
+
+  function unlockAudio(ev) {
+    if (ev && ev.isTrusted === false) return;
+    var sdl = Module.SDL3;
+    var ctx = sdl && sdl.audioContext;
+    if (ctx && ctx.state !== "running" && ctx.state !== "closed") {
+      ctx.resume().catch(function () {});
+    }
+  }
+  ["pointerdown", "touchend", "mousedown", "keydown", "click"].forEach(function (type) {
+    window.addEventListener(type, unlockAudio, { capture: true, passive: true });
+  });
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") unlockAudio();
+  });
+  Module.realmzAudioState = function () {
+    var ctx = Module.SDL3 && Module.SDL3.audioContext;
+    return ctx ? ctx.state : "none";
+  };
+
+  // ---------------------------------------------------------------------------
   // Offline play: a service worker stores the whole game on the device, so
   // the home-screen app works with no network (see sw.js).
 
