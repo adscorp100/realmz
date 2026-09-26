@@ -1,0 +1,668 @@
+/* Realmz web shell. Touch controls, the menu sheet and the start screen use
+   the game's own look: stone texture, bevelled frames, Black Chancery in
+   yellow and cyan. */
+
+@font-face {
+  font-family: "Black Chancery";
+  src: url("fonts/BlackChancery.ttf?v=20260926024239") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "ChicagoFLF";
+  src: url("fonts/ChicagoFLF.ttf?v=20260926024239") format("truetype");
+  font-display: swap;
+}
+
+:root {
+  --rz-yellow: #ffff00;
+  --rz-cyan: #00ffff;
+  --rz-green: #00ff00;
+  --rz-red: #ff0000;
+  --rz-grey: #cccccc;
+  --rz-stone: #535353 url("stone.png?v=20260926024239") repeat;
+  --rz-stone-dark: #3a3a3a url("stone.png?v=20260926024239") repeat;
+  --rz-light: #a8a8a8;
+  --rz-dark: #1c1c1c;
+  --rz-script: "Black Chancery", "Apple Chancery", "Palatino", serif;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #000;
+  color: #ddd;
+  font: 13px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  overscroll-behavior: none;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  box-sizing: border-box;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: var(--rz-cyan);
+}
+
+/* A raised Realmz button: stone face, light top-left edge, dark bottom-right
+   edge. Pressing it sinks the bevel. */
+.rz-button,
+button,
+.button {
+  font-family: var(--rz-script);
+  font-size: 18px;
+  color: var(--rz-yellow);
+  text-shadow: 1px 1px 0 #000;
+  background: var(--rz-stone);
+  border: 2px solid;
+  border-color: var(--rz-light) var(--rz-dark) var(--rz-dark) var(--rz-light);
+  border-radius: 0;
+  box-shadow: 0 0 0 1px #000;
+  padding: 4px 12px;
+  cursor: pointer;
+  touch-action: manipulation;
+  line-height: 1.1;
+}
+
+button:focus {
+  outline: none;
+}
+
+button:focus-visible {
+  outline: 1px dotted var(--rz-yellow);
+  outline-offset: 2px;
+}
+
+body.touch button:focus-visible {
+  outline: none;
+}
+
+button:active,
+.button:active,
+button.pressed {
+  border-color: var(--rz-dark) var(--rz-light) var(--rz-light) var(--rz-dark);
+  background: var(--rz-stone-dark);
+  color: var(--rz-cyan);
+}
+
+button.on {
+  color: var(--rz-green);
+  border-color: var(--rz-dark) var(--rz-light) var(--rz-light) var(--rz-dark);
+  background: var(--rz-stone-dark);
+}
+
+/* ---------------------------------------------------- desktop Mac menu bar */
+
+#menubar {
+  display: flex;
+  flex: none;
+  height: 22px;
+  background: #eee;
+  color: #000;
+  border-bottom: 1px solid #000;
+  font: 13px "ChicagoFLF", -apple-system, sans-serif;
+}
+
+#menubar .title {
+  padding: 3px 10px;
+  cursor: default;
+  position: relative;
+}
+
+#menubar .title.disabled {
+  color: #999;
+}
+
+#menubar .title.open {
+  background: #000;
+  color: #fff;
+}
+
+.menu {
+  position: absolute;
+  z-index: 10;
+  min-width: 180px;
+  max-height: calc(100dvh - 30px);
+  overflow-y: auto;
+  background: #fff;
+  color: #000;
+  border: 1px solid #000;
+  box-shadow: 2px 2px 0 #000;
+  padding: 2px 0;
+  font: 13px "ChicagoFLF", -apple-system, sans-serif;
+}
+
+.menu .item {
+  display: flex;
+  align-items: center;
+  padding: 2px 10px 2px 4px;
+  white-space: nowrap;
+  cursor: default;
+  position: relative;
+}
+
+.menu .item .mark {
+  width: 16px;
+  text-align: center;
+}
+
+.menu .item .label {
+  flex: 1;
+}
+
+.menu .item .key {
+  margin-left: 24px;
+}
+
+.menu .item.disabled {
+  color: #999;
+}
+
+.menu .item:not(.disabled):not(.separator):hover,
+.menu .item.active {
+  background: #000;
+  color: #fff;
+}
+
+.menu .separator {
+  border-top: 1px dotted #999;
+  margin: 3px 0;
+  padding: 0;
+  height: 0;
+}
+
+.item.bold .label { font-weight: bold; }
+.item.italic .label { font-style: italic; }
+.item.underline .label { text-decoration: underline; }
+
+/* ------------------------------------------------------------- game stage */
+
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+}
+
+#stage {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  min-height: 0;
+  touch-action: none;
+}
+
+#canvas {
+  display: block;
+  image-rendering: pixelated;
+  outline: none;
+  touch-action: none;
+}
+
+#overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: #000;
+  z-index: 5;
+}
+
+#overlay.hidden {
+  display: none;
+}
+
+.overlay-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 460px;
+  padding: 18px 22px;
+  text-align: center;
+  background: var(--rz-stone);
+  border: 3px solid;
+  border-color: var(--rz-light) var(--rz-dark) var(--rz-dark) var(--rz-light);
+  box-shadow: 0 0 0 1px #000;
+}
+
+.overlay-panel h1 {
+  margin: 0;
+  font: 44px var(--rz-script);
+  color: var(--rz-yellow);
+  text-shadow: 2px 2px 0 #000;
+  font-weight: normal;
+}
+
+#status {
+  font: 18px var(--rz-script);
+  color: var(--rz-cyan);
+  text-shadow: 1px 1px 0 #000;
+}
+
+#progress {
+  width: 240px;
+  height: 12px;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 2px solid;
+  border-color: var(--rz-dark) var(--rz-light) var(--rz-light) var(--rz-dark);
+  background: #222;
+}
+
+#progress::-webkit-progress-bar {
+  background: #222;
+}
+
+#progress::-webkit-progress-value {
+  background: var(--rz-yellow);
+}
+
+#progress::-moz-progress-bar {
+  background: var(--rz-yellow);
+}
+
+#start {
+  font-size: 26px;
+  padding: 8px 28px;
+  color: var(--rz-green);
+}
+
+.credit {
+  font-size: 11px;
+  color: var(--rz-grey);
+  max-width: 480px;
+  margin: 0;
+}
+
+footer {
+  display: flex;
+  flex: none;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: #999;
+  background: #202020;
+}
+
+.tools {
+  display: flex;
+  gap: 8px;
+}
+
+footer button,
+footer .button {
+  padding: 1px 8px;
+  font-size: 14px;
+}
+
+/* ---------------------------------------------- touch-only elements (hidden) */
+
+#mobilebar,
+#controls {
+  display: none;
+}
+
+#keyboard-input {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  border: 0;
+  padding: 0;
+  font-size: 16px; /* stops iOS zooming when it gets focus */
+  pointer-events: none;
+  caret-color: transparent;
+}
+
+/* ---------------------------------------------------------- menu sheet */
+
+#sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  background: var(--rz-stone);
+  color: var(--rz-yellow);
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+#sheet[hidden] {
+  display: none;
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 3px solid;
+  border-color: var(--rz-dark);
+  box-shadow: 0 1px 0 var(--rz-light);
+}
+
+.sheet-header strong {
+  font: 30px var(--rz-script);
+  font-weight: normal;
+  color: var(--rz-yellow);
+  text-shadow: 2px 2px 0 #000;
+}
+
+.sheet-header button {
+  width: 48px;
+  height: 44px;
+  padding: 0;
+  font-size: 20px;
+  color: var(--rz-red);
+}
+
+#sheet-menus {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 10px;
+}
+
+.sheet-menu {
+  margin-bottom: 6px;
+  border: 2px solid;
+  border-color: var(--rz-light) var(--rz-dark) var(--rz-dark) var(--rz-light);
+  box-shadow: 0 0 0 1px #000;
+}
+
+.sheet-menu > .sheet-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  font: 22px var(--rz-script);
+  color: var(--rz-yellow);
+  text-shadow: 1px 1px 0 #000;
+}
+
+.sheet-menu > .sheet-title::after {
+  content: "\25B8";
+  font-family: -apple-system, sans-serif;
+  font-size: 16px;
+  transition: transform 0.15s;
+}
+
+.sheet-menu.open > .sheet-title {
+  color: var(--rz-cyan);
+  border-bottom: 2px solid var(--rz-dark);
+}
+
+.sheet-menu.open > .sheet-title::after {
+  transform: rotate(90deg);
+}
+
+.sheet-menu.disabled > .sheet-title {
+  color: #8a8a8a;
+}
+
+.sheet-items {
+  display: none;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.sheet-menu.open > .sheet-items {
+  display: block;
+}
+
+.sheet-items .item {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px 0 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.45);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
+  font: 15px "ChicagoFLF", -apple-system, sans-serif;
+  color: var(--rz-yellow);
+  text-shadow: 1px 1px 0 #000;
+}
+
+.sheet-items .item .mark {
+  width: 22px;
+  text-align: center;
+  color: var(--rz-green);
+}
+
+.sheet-items .item .label {
+  flex: 1;
+}
+
+.sheet-items .item.disabled {
+  color: #8a8a8a;
+}
+
+.sheet-items .item:not(.disabled):active {
+  background: rgba(0, 0, 0, 0.5);
+  color: var(--rz-cyan);
+}
+
+.sheet-items .separator {
+  height: 4px;
+  background: var(--rz-dark);
+  box-shadow: 0 1px 0 var(--rz-light);
+}
+
+.sheet-items .sheet-items {
+  display: block;
+  padding-left: 18px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.sheet-footer {
+  padding: 10px 12px;
+  border-top: 3px solid var(--rz-dark);
+  box-shadow: inset 0 1px 0 var(--rz-light);
+}
+
+.sheet-footer .tools {
+  margin-bottom: 8px;
+}
+
+.sheet-footer .tools button,
+.sheet-footer .tools .button {
+  font-size: 18px;
+  padding: 6px 12px;
+}
+
+/* ------------------------------------------------------------ touch layout */
+
+body.touch #menubar,
+body.touch footer {
+  display: none;
+}
+
+body.touch #mobilebar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  background: var(--rz-stone);
+  border-bottom: 2px solid var(--rz-dark);
+}
+
+body.touch #mobilebar .spacer {
+  flex: 1;
+}
+
+body.touch #mobilebar .right-tools {
+  display: flex;
+  gap: 6px;
+}
+
+body.touch #mobilebar button {
+  min-width: 46px;
+  height: 40px;
+  padding: 0 12px;
+  font-size: 20px;
+}
+
+body.touch #mobilebar button.icon {
+  font-family: -apple-system, "Segoe UI Symbol", sans-serif;
+  font-size: 18px;
+}
+
+body.touch #controls {
+  display: flex;
+  flex: none;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px 10px;
+}
+
+body.touch.controls-hidden #controls {
+  display: none;
+}
+
+#dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 58px);
+  grid-template-rows: repeat(3, 58px);
+  gap: 3px;
+  padding: 4px;
+  background: #000;
+  border: 2px solid;
+  border-color: var(--rz-dark) var(--rz-light) var(--rz-light) var(--rz-dark);
+}
+
+#dpad button {
+  padding: 0;
+  font-family: -apple-system, "Segoe UI Symbol", sans-serif;
+  font-size: 24px;
+}
+
+#dpad button.center {
+  font-size: 22px;
+  color: var(--rz-green);
+}
+
+#actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#actions button {
+  width: 88px;
+  height: 48px;
+  font-size: 22px;
+}
+
+body.touch.wants-text:not(.typing) #show-keyboard {
+  animation: rz-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes rz-pulse {
+  0%, 100% { color: var(--rz-yellow); box-shadow: 0 0 0 1px #000; }
+  50% { color: var(--rz-cyan); box-shadow: 0 0 0 1px #000, 0 0 10px 2px var(--rz-cyan); }
+}
+
+/* Landscape phones: give the game the full height and float the toolbar and
+   controls over the side margins. */
+@media (orientation: landscape) {
+  body.touch #mobilebar {
+    position: absolute;
+    top: calc(env(safe-area-inset-top) + 6px);
+    left: calc(env(safe-area-inset-left) + 6px);
+    right: calc(env(safe-area-inset-right) + 6px);
+    z-index: 20;
+    padding: 0;
+    background: none;
+    border: 0;
+    pointer-events: none;
+  }
+
+  body.touch #mobilebar button {
+    pointer-events: auto;
+  }
+
+  /* Reserve side columns for the D-pad and buttons so they never cover the
+     game; on small phones the game screen shrinks to fit between them. */
+  body.touch:not(.controls-hidden) #stage {
+    box-sizing: border-box;
+    padding: 0 calc(env(safe-area-inset-right) + 88px) 0 calc(env(safe-area-inset-left) + 166px);
+  }
+
+  body.touch.controls-hidden #stage {
+    box-sizing: border-box;
+    padding-right: 88px;
+  }
+
+  /* The side margins are narrow, so stack the right-hand buttons. */
+  body.touch #mobilebar {
+    align-items: flex-start;
+  }
+
+  body.touch #mobilebar .right-tools {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  body.touch #controls {
+    position: absolute;
+    inset: 0;
+    padding: 8px;
+    pointer-events: none;
+    align-items: flex-end;
+  }
+
+  body.touch #controls > * {
+    pointer-events: auto;
+  }
+
+  body.touch #dpad {
+    grid-template-columns: repeat(3, 46px);
+    grid-template-rows: repeat(3, 46px);
+  }
+
+  body.touch #dpad button {
+    font-size: 20px;
+  }
+
+  body.touch #actions button {
+    width: 72px;
+    height: 42px;
+    font-size: 20px;
+  }
+}
+
+#offline-status,
+#sheet-offline-status {
+  font: 15px var(--rz-script);
+  color: var(--rz-cyan);
+  text-shadow: 1px 1px 0 #000;
+}
+
+#offline-status.ready,
+#sheet-offline-status.ready {
+  color: var(--rz-green);
+}
+
+#sheet-offline-status {
+  margin-bottom: 8px;
+}
