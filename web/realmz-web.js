@@ -646,6 +646,7 @@
   // Scale the 800x600 game screen to the largest 4:3 size that fits, using
   // whole-number steps when there's room so pixel art stays crisp.
   function fitCanvas() {
+    if (typeof resetZoom === "function" && zoom && zoom.s !== 1) resetZoom();
     var cs = getComputedStyle(stageEl);
     var w = stageEl.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
     var h = stageEl.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
@@ -665,6 +666,224 @@
     Module.callMain([]);
     fitCanvas();
   });
+
+  // ---------------------------------------------------------------------------
+  // Pinch to zoom and two-finger pan (touch devices).
+  //
+  // One finger always belongs to the game: taps, holds and drags go to Realmz
+  // exactly as before. Two fingers always belong to the camera, and nothing
+  // from a two-finger gesture reaches the game. Because a second finger might
+  // still be on its way when the first lands, a single touch is only handed to
+  // the game once it's clearly a one-finger action: it's released (a tap), it
+  // moves past a small slop (a drag), or it's held briefly.
+
+  var zoom = { s: 1, tx: 0, ty: 0 };
+  var ZOOM_MAX = 4;
+  var TAP_SLOP = 8; // px a finger may wander and still count as a tap
+  var HOLD_MS = 120; // after this long, a still single finger goes to the game
+  var fitButton = document.getElementById("zoom-fit");
+
+  function applyZoom() {
+    if (zoom.s <= 1.001) {
+      zoom.s = 1;
+      zoom.tx = 0;
+      zoom.ty = 0;
+    }
+    canvas.style.transformOrigin = "0 0";
+    canvas.style.transform = zoom.s === 1 ? "" :
+        "translate(" + zoom.tx + "px," + zoom.ty + "px) scale(" + zoom.s + ")";
+    // Clip the zoomed game to its own area so it never shows behind the
+    // side controls (the stage's padding).
+    if (zoom.s === 1) {
+      stageEl.style.clipPath = "";
+    } else {
+      var cs = getComputedStyle(stageEl);
+      stageEl.style.clipPath = "inset(" + cs.paddingTop + " " + cs.paddingRight + " " +
+          cs.paddingBottom + " " + cs.paddingLeft + ")";
+    }
+    if (fitButton) fitButton.hidden = zoom.s === 1;
+  }
+
+  function resetZoom() {
+    zoom.s = 1;
+    applyZoom();
+  }
+
+  // The canvas's untransformed position, and the part of the stage the game
+  // may occupy (the content box, so zoomed content never slides under the
+  // side controls).
+  function zoomFrame() {
+    var prev = canvas.style.transform;
+    canvas.style.transform = "";
+    var base = canvas.getBoundingClientRect();
+    canvas.style.transform = prev;
+    var st = stageEl.getBoundingClientRect();
+    var cs = getComputedStyle(stageEl);
+    var area = {
+      left: st.left + parseFloat(cs.paddingLeft),
+      top: st.top + parseFloat(cs.paddingTop),
+      right: st.right - parseFloat(cs.paddingRight),
+      bottom: st.bottom - parseFloat(cs.paddingBottom),
+    };
+    return { base: base, area: area };
+  }
+
+  function clampAxis(t, baseStart, size, areaStart, areaEnd) {
+    var start = baseStart + t;
+    var span = areaEnd - areaStart;
+    var lo, hi;
+    if (size >= span) {
+      lo = areaEnd - size;
+      hi = areaStart;
+    } else {
+      lo = areaStart;
+      hi = areaEnd - size;
+    }
+    start = Math.min(hi, Math.max(lo, start));
+    return start - baseStart;
+  }
+
+  function setZoom(s, tx, ty, frame) {
+    s = Math.max(1, Math.min(ZOOM_MAX, s));
+    var b = frame.base;
+    zoom.s = s;
+    zoom.tx = clampAxis(tx, b.left, b.width * s, frame.area.left, frame.area.right);
+    zoom.ty = clampAxis(ty, b.top, b.height * s, frame.area.top, frame.area.bottom);
+    applyZoom();
+  }
+
+  if (fitButton) fitButton.addEventListener("click", resetZoom);
+
+  var touches = new Map(); // pointerId -> {x, y, sx, sy}
+  var touchMode = "idle"; // idle | pending | game | gesture
+  var gamePointerId = null;
+  var holdTimer = null;
+  var pinch = null;
+
+  function sendToGame(type, id, x, y) {
+    var down = type === "pointerdown";
+    var ev = new PointerEvent(type, {
+      pointerId: id, pointerType: "touch", isPrimary: true,
+      clientX: x, clientY: y,
+      button: type === "pointermove" ? -1 : 0,
+      buttons: (down || type === "pointermove") ? 1 : 0,
+      bubbles: true, cancelable: true,
+    });
+    ev.realmzSynthetic = true;
+    canvas.dispatchEvent(ev);
+  }
+
+  function startGameTouch(id) {
+    var t = touches.get(id);
+    clearTimeout(holdTimer);
+    touchMode = "game";
+    gamePointerId = id;
+    sendToGame("pointerdown", id, t.sx, t.sy);
+    if (t.x !== t.sx || t.y !== t.sy) sendToGame("pointermove", id, t.x, t.y);
+  }
+
+  function beginPinch() {
+    var pts = Array.from(touches.values()).slice(0, 2);
+    var frame = zoomFrame();
+    var mx = (pts[0].x + pts[1].x) / 2, my = (pts[0].y + pts[1].y) / 2;
+    pinch = {
+      frame: frame,
+      dist: Math.max(1, Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)),
+      s: zoom.s,
+      // The game-canvas point (unscaled CSS px) under the fingers' midpoint.
+      ux: (mx - frame.base.left - zoom.tx) / zoom.s,
+      uy: (my - frame.base.top - zoom.ty) / zoom.s,
+    };
+  }
+
+  function updatePinch() {
+    var pts = Array.from(touches.values()).slice(0, 2);
+    if (pts.length < 2 || !pinch) return;
+    var mx = (pts[0].x + pts[1].x) / 2, my = (pts[0].y + pts[1].y) / 2;
+    var d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    var s = Math.max(1, Math.min(ZOOM_MAX, pinch.s * d / pinch.dist));
+    // Keep the same game point under the midpoint: this zooms around the
+    // fingers and pans as they move together.
+    setZoom(s, mx - pinch.frame.base.left - pinch.ux * s,
+        my - pinch.frame.base.top - pinch.uy * s, pinch.frame);
+  }
+
+  function onTouchPointer(ev) {
+    if (ev.pointerType !== "touch" || ev.realmzSynthetic) return;
+    if (ev.target.closest && ev.target.closest("button, .menu, #controls")) return;
+    // Everything below is ours; SDL only sees what sendToGame forwards.
+    ev.stopPropagation();
+    ev.preventDefault();
+    var id = ev.pointerId;
+
+    if (ev.type === "pointerdown") {
+      touches.set(id, { x: ev.clientX, y: ev.clientY, sx: ev.clientX, sy: ev.clientY });
+      if (touches.size === 1 && touchMode === "idle") {
+        touchMode = "pending";
+        holdTimer = setTimeout(function () {
+          if (touchMode === "pending" && touches.size === 1) startGameTouch(id);
+        }, HOLD_MS);
+      } else if (touches.size === 2) {
+        clearTimeout(holdTimer);
+        if (touchMode === "game") {
+          // The first finger was already passed to the game; release it far
+          // off-screen so the game sees the button go up without a click on
+          // anything.
+          sendToGame("pointerup", gamePointerId, -10000, -10000);
+          gamePointerId = null;
+        }
+        touchMode = "gesture";
+        beginPinch();
+      }
+      return;
+    }
+
+    var t = touches.get(id);
+    if (!t) return;
+
+    if (ev.type === "pointermove") {
+      t.x = ev.clientX;
+      t.y = ev.clientY;
+      if (touchMode === "pending" && Math.hypot(t.x - t.sx, t.y - t.sy) > TAP_SLOP) {
+        startGameTouch(id);
+      } else if (touchMode === "game" && id === gamePointerId) {
+        sendToGame("pointermove", id, t.x, t.y);
+      } else if (touchMode === "gesture") {
+        updatePinch();
+      }
+      return;
+    }
+
+    // pointerup / pointercancel
+    touches.delete(id);
+    if (touchMode === "pending") {
+      // A quick tap: hand the game a press and release at the touch point.
+      clearTimeout(holdTimer);
+      sendToGame("pointerdown", id, t.sx, t.sy);
+      sendToGame("pointerup", id, t.sx, t.sy);
+    } else if (touchMode === "game" && id === gamePointerId) {
+      sendToGame("pointerup", id, t.x, t.y);
+      gamePointerId = null;
+    } else if (touchMode === "gesture" && touches.size >= 2) {
+      beginPinch();
+    } else if (touchMode === "gesture" && touches.size === 1) {
+      pinch = null; // a leftover finger stays with the gesture until lifted
+    }
+    if (touches.size === 0) {
+      touchMode = "idle";
+      pinch = null;
+    }
+  }
+
+  if (isTouch) {
+    ["pointerdown", "pointermove", "pointerup", "pointercancel"].forEach(function (type) {
+      stageEl.addEventListener(type, onTouchPointer, { capture: true, passive: false });
+    });
+    // Safari's own pinch gestures on the page.
+    ["gesturestart", "gesturechange"].forEach(function (type) {
+      document.addEventListener(type, function (ev) { ev.preventDefault(); }, { passive: false });
+    });
+  }
 
   // ---------------------------------------------------------------------------
   // Audio unlock. SDL retries AudioContext.resume() from a timer, but iOS only
