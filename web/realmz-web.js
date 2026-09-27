@@ -670,6 +670,8 @@
   // ---------------------------------------------------------------------------
   // Pinch to zoom and two-finger pan (touch devices).
   //
+  // Zoomed, the game fills the whole stage and the controls float over it.
+  //
   // One finger always belongs to the game: taps, holds and drags go to Realmz
   // exactly as before. Two fingers always belong to the camera, and nothing
   // from a two-finger gesture reaches the game. Because a second finger might
@@ -692,15 +694,7 @@
     canvas.style.transformOrigin = "0 0";
     canvas.style.transform = zoom.s === 1 ? "" :
         "translate(" + zoom.tx + "px," + zoom.ty + "px) scale(" + zoom.s + ")";
-    // Clip the zoomed game to its own area so it never shows behind the
-    // side controls (the stage's padding).
-    if (zoom.s === 1) {
-      stageEl.style.clipPath = "";
-    } else {
-      var cs = getComputedStyle(stageEl);
-      stageEl.style.clipPath = "inset(" + cs.paddingTop + " " + cs.paddingRight + " " +
-          cs.paddingBottom + " " + cs.paddingLeft + ")";
-    }
+
     if (fitButton) fitButton.hidden = zoom.s === 1;
   }
 
@@ -709,22 +703,16 @@
     applyZoom();
   }
 
-  // The canvas's untransformed position, and the part of the stage the game
-  // may occupy (the content box, so zoomed content never slides under the
-  // side controls).
+  // The canvas's untransformed position, and the area the zoomed game may
+  // fill: the whole stage, including under the side controls, so zooming in
+  // removes the letterbox bars.
   function zoomFrame() {
     var prev = canvas.style.transform;
     canvas.style.transform = "";
     var base = canvas.getBoundingClientRect();
     canvas.style.transform = prev;
     var st = stageEl.getBoundingClientRect();
-    var cs = getComputedStyle(stageEl);
-    var area = {
-      left: st.left + parseFloat(cs.paddingLeft),
-      top: st.top + parseFloat(cs.paddingTop),
-      right: st.right - parseFloat(cs.paddingRight),
-      bottom: st.bottom - parseFloat(cs.paddingBottom),
-    };
+    var area = { left: st.left, top: st.top, right: st.right, bottom: st.bottom };
     return { base: base, area: area };
   }
 
